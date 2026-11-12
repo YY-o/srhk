@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>专属电子生日贺卡</title>
+    <style>
+        /* 基础重置与字体 */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'PingFang SC', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #ffe6eb;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 背景动态渐变 */
+        .bg-gradient {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #ffb6c1, #ffe6eb, #ffc0cb);
+            background-size: 400% 400%;
+            animation: gradientBG 10s ease infinite;
+            z-index: -1;
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* 通用页面容器 */
+        .page {
+            position: absolute;
+            width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 1s ease;
+        }
+
+        /* === 界面一：密码锁屏 === */
+        #lock-screen { opacity: 1; z-index: 10; }
+        #lock-screen.hidden { opacity: 0; pointer-events: none; }
+        
+        .lock-box {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 40px 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(255, 105, 180, 0.2);
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+        .lock-box h2 { color: #d84a6b; font-size: 20px; margin-bottom: 20px; font-weight: 500;}
+        .input-area {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        input[type="password"] {
+            width: 200px;
+            padding: 12px;
+            border: 1px solid #ffb6c1;
+            border-radius: 25px;
+            text-align: center;
+            font-size: 18px;
+            outline: none;
+            background: rgba(255, 255, 255, 0.8);
+            color: #d84a6b;
+            letter-spacing: 5px;
+        }
+        button {
+            background: #ff7b9c;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 123, 156, 0.4);
+            transition: transform 0.2s;
+        }
+        button:active { transform: scale(0.95); }
+        .error-msg { color: #ff3333; font-size: 12px; margin-top: 10px; opacity: 0; transition: opacity 0.3s;}
+        
+        /* 错误抖动动画 */
+        .shake { animation: shake 0.4s ease-in-out; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        /* === 界面二：贺卡主界面 === */
+        #card-screen { opacity: 0; z-index: 5; pointer-events: none; }
+        #card-screen.active { opacity: 1; z-index: 20; pointer-events: auto; }
+
+        .cake-container {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+            text-shadow: 0 10px 20px rgba(255,105,180,0.3);
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .message-box {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            width: 80%;
+            max-width: 320px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(255, 105, 180, 0.15);
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        #blessing-text {
+            color: #d84a6b;
+            font-size: 18px;
+            line-height: 1.6;
+            font-weight: 500;
+            /* 打字机光标 */
+            border-right: 2px solid #ff7b9c;
+            animation: blink 0.8s infinite;
+            white-space: pre-wrap;
+        }
+        @keyframes blink { 50% { border-color: transparent; } }
+
+        .signature {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #ff7b9c;
+            text-align: right;
+            opacity: 0;
+            transition: opacity 1s;
+        }
+
+        #start-btn { margin-top: 30px; opacity: 0; transition: opacity 0.5s;}
+
+        /* 漂浮爱心与星星 */
+        .particle {
+            position: absolute;
+            color: #ff7b9c;
+            font-size: 20px;
+            pointer-events: none;
+            animation: fly 1.5s ease-out forwards;
+            z-index: 30;
+        }
+        @keyframes fly {
+            0% { transform: translate(0, 0) scale(0.5); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(1.5); opacity: 0; }
+        }
+
+        /* 底部提示 */
+        .footer-tip {
+            position: absolute;
+            bottom: 20px;
+            font-size: 12px;
+            color: rgba(216, 74, 107, 0.6);
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 动态背景 -->
+    <div class="bg-gradient"></div>
+
+    <!-- 界面一：密码锁屏 -->
+    <div class="page" id="lock-screen">
+        <div class="lock-box">
+            <h2>🔒 请输入专属密码</h2>
+            <div class="input-area">
+                <input type="password" id="pwd-input" placeholder="····" maxlength="6" inputmode="numeric">
+                <button id="unlock-btn">解 锁 惊 喜</button>
+            </div>
+            <div class="error-msg" id="error-msg">密码不对哦，再试一次~</div>
+        </div>
+    </div>
+
+    <!-- 界面二：贺卡主界面 -->
+    <div class="page" id="card-screen">
+        <div class="cake-container">🎂</div>
+        <div class="message-box">
+            <div id="blessing-text"></div>
+            <div class="signature" id="signature">—— 爱你的我</div>
+        </div>
+        <button id="start-btn">点击开启惊喜</button>
+        <div class="footer-tip">© 你的专属定制贺卡</div>
+    </div>
+
+    <script>
+        // === 核心配置区（接单时只需修改这里的数据即可） ===
+        const config = {
+            password: "0520", // 解锁密码
+            name: "宝宝",     // 收件人称呼
+            blessing: "生日快乐！愿你永远被爱包围，岁岁平安，天天开心。", // 祝福语
+            sender: "爱你的我" // 发件人
+        };
+
+        // 获取DOM元素
+        const lockScreen = document.getElementById('lock-screen');
+        const cardScreen = document.getElementById('card-screen');
+        const pwdInput = document.getElementById('pwd-input');
+        const unlockBtn = document.getElementById('unlock-btn');
+        const errorMsg = document.getElementById('error-msg');
+        const blessingText = document.getElementById('blessing-text');
+        const signature = document.getElementById('signature');
+        const startBtn = document.getElementById('start-btn');
+
+        // 1. 密码验证逻辑
+        unlockBtn.addEventListener('click', checkPassword);
+        pwdInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') checkPassword();
+        });
+
+        function checkPassword() {
+            if (pwdInput.value === config.password) {
+                // 密码正确，切换界面
+                lockScreen.classList.add('hidden');
+                setTimeout(() => {
+                    cardScreen.classList.add('active');
+                    typeWriter(); // 开始打字机效果
+                }, 500); // 等待锁屏淡出
+            } else {
+                // 密码错误，抖动+提示
+                pwdInput.classList.add('shake');
+                errorMsg.style.opacity = 1;
+                setTimeout(() => {
+                    pwdInput.classList.remove('shake');
+                    errorMsg.style.opacity = 0;
+                    pwdInput.value = '';
+                }, 1000);
+            }
+        }
+
+        // 2. 打字机效果
+        let typeIndex = 0;
+        const fullText = `亲爱的${config.name}：\n\n${config.blessing}`;
+        
+        function typeWriter() {
+            if (typeIndex < fullText.length) {
+                blessingText.innerHTML += fullText.charAt(typeIndex);
+                typeIndex++;
+                setTimeout(typeWriter, 100); // 打字速度
+            } else {
+                // 打字结束，显示落款和按钮
+                blessingText.style.borderRight = "none";
+                signature.innerText = `—— ${config.sender}`;
+                signature.style.opacity = 1;
+                startBtn.style.opacity = 1;
+            }
+        }
+
+        // 3. 惊喜粒子特效 (点击按钮触发)
+        startBtn.addEventListener('click', function() {
+            startBtn.style.display = 'none'; // 点击后隐藏按钮
+            createParticles();
+        });
+
+        function createParticles() {
+            const emojis = ['❤️', '✨', '🌸', '💖'];
+            // 生成60个粒子
+            for (let i = 0; i < 60; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                particle.innerText = emojis[Math.floor(Math.random() * emojis.length)];
+                
+                // 随机出现位置（屏幕中心附近）
+                particle.style.left = `50%`;
+                particle.style.top = `50%`;
+                
+                // 随机飞散角度和距离
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 100 + Math.random() * 200;
+                const tx = Math.cos(angle) * distance + 'px';
+                const ty = Math.sin(angle) * distance + 'px';
+                
+                particle.style.setProperty('--tx', tx);
+                particle.style.setProperty('--ty', ty);
+                
+                // 随机动画延迟
+                particle.style.animationDelay = Math.random() * 0.3 + 's';
+                
+                document.body.appendChild(particle);
+                
+                // 动画结束后移除DOM
+                setTimeout(() => {
+                    particle.remove();
+                }, 2000);
+            }
+        }
+    </script>
+</body>
+</html>
